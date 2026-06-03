@@ -118,4 +118,104 @@ async function updateMe(req, res, next) {
   }
 }
 
-module.exports = { signup, login, getMe, updateMe };
+const jwt = require('jsonwebtoken');
+const googleCalendarService = require('../services/googleCalendarService');
+
+async function initiateGoogleAuth(req, res, next) {
+  try {
+    // Check if Google credentials are set
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(501).json({
+        success: false,
+        message: 'Google OAuth is not configured on the server. Please define GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.'
+      });
+    }
+    const authUrl = googleCalendarService.getAuthUrl(req.user._id.toString());
+    return sendSuccess(res, { message: 'Redirect URL generated', data: { url: authUrl } });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function googleAuthCallback(req, res, next) {
+  const frontendUrl = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',')[0] : 'http://localhost:5173';
+  try {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      return res.redirect(`${frontendUrl}/profile?google_error=${encodeURIComponent(error)}`);
+    }
+
+    if (!code || !state) {
+      return res.redirect(`${frontendUrl}/profile?google_error=missing_parameters`);
+    }
+
+    // Verify state token
+    let decoded;
+    try {
+      decoded = jwt.verify(state, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.redirect(`${frontendUrl}/profile?google_error=invalid_state`);
+    }
+
+    const { userId } = decoded;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.redirect(`${frontendUrl}/profile?google_error=user_not_found`);
+    }
+
+    // Exchange code for access/refresh tokens
+    const credentials = await googleCalendarService.getTokensFromCode(code);
+
+    // Save tokens and expiry
+    user.googleAccessToken = credentials.accessToken;
+    if (credentials.refreshToken) {
+      user.googleRefreshToken = credentials.refreshToken;
+    }
+    user.googleTokensExpiry = new Date(Date.now() + credentials.expiresIn * 1000);
+    await user.save();
+
+    return res.redirect(`${frontendUrl}/profile?google_connected=true`);
+  } catch (error) {
+    console.error('[Google OAuth Callback Error]', error);
+    return res.redirect(`${frontendUrl}/profile?google_error=${encodeURIComponent(error.message)}`);
+  }
+}
+
+async function getGoogleStatus(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id);
+    return sendSuccess(res, {
+      message: 'Google Calendar status fetched',
+      data: { connected: Boolean(user && user.googleRefreshToken) }
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function disconnectGoogle(req, res, next) {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.googleAccessToken = null;
+      user.googleRefreshToken = null;
+      user.googleTokensExpiry = null;
+      await user.save();
+    }
+    return sendSuccess(res, { message: 'Google Calendar disconnected' });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = {
+  signup,
+  login,
+  getMe,
+  updateMe,
+  initiateGoogleAuth,
+  googleAuthCallback,
+  getGoogleStatus,
+  disconnectGoogle
+};

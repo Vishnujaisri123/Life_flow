@@ -27,6 +27,13 @@ export const apiClient = axios.create({
   timeout: 30_000,
 });
 
+if (typeof window !== "undefined" && "caches" in window) {
+  const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:5000/api";
+  caches.open("auth-cache").then((cache) => {
+    cache.put("/api-url", new Response(apiUrl));
+  });
+}
+
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const authConfig = config as AuthAxiosConfig;
   if (authConfig.skipAuth) return config;

@@ -3,6 +3,7 @@ const Reminder = require('../models/Reminder');
 const { sendSuccess, sendError } = require('../utils/response');
 const { validateTaskBody } = require('../utils/validation');
 const { buildTodayFilter, buildListFilter, mapTaskUpdates } = require('../services/taskService');
+const googleCalendarService = require('../services/googleCalendarService');
 
 async function getTasks(req, res, next) {
   try {
@@ -77,6 +78,11 @@ async function createTask(req, res, next) {
     
     await syncTaskReminder(task);
 
+    // Sync with Google Calendar if connected
+    if (req.user.googleRefreshToken) {
+      await googleCalendarService.upsertCalendarEvent(req.user, task);
+    }
+
     return sendSuccess(res, {
       message: 'Task created',
       data: task,
@@ -117,6 +123,11 @@ async function updateTask(req, res, next) {
     }
     
     await syncTaskReminder(task);
+
+    // Sync with Google Calendar if connected
+    if (req.user.googleRefreshToken) {
+      await googleCalendarService.upsertCalendarEvent(req.user, task);
+    }
 
     return sendSuccess(res, { message: 'Task updated', data: task });
   } catch (error) {
@@ -160,6 +171,11 @@ async function completeTask(req, res, next) {
       user.productivityScore = Math.min(100, (user.productivityScore || 0) + 2);
       user.completedTasks = (user.completedTasks || 0) + 1;
       await user.save();
+
+      // Sync with Google Calendar if connected
+      if (req.user.googleRefreshToken) {
+        await googleCalendarService.upsertCalendarEvent(req.user, task);
+      }
     }
 
     return sendSuccess(res, { message: 'Task completed', data: task });
@@ -180,6 +196,11 @@ async function deleteTask(req, res, next) {
       req.user.completedTasks = Math.max(0, (req.user.completedTasks || 0) - 1);
     }
     await req.user.save();
+
+    // Delete from Google Calendar if synced
+    if (req.user.googleRefreshToken && task.googleEventId) {
+      await googleCalendarService.deleteCalendarEvent(req.user, task);
+    }
 
     return sendSuccess(res, { message: 'Task deleted', data: { id: task._id.toString() } });
   } catch (error) {

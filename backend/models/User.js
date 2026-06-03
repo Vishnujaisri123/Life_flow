@@ -70,6 +70,18 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    googleAccessToken: {
+      type: String,
+      default: null,
+    },
+    googleRefreshToken: {
+      type: String,
+      default: null,
+    },
+    googleTokensExpiry: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

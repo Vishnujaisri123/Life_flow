@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bell, LogOut, Search } from "lucide-react";
+import { Bell, LogOut, Search, Download } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { useReminders } from "@/hooks/useReminders";
 import { ROUTES } from "@/routes/paths";
 import { isApiConfigured } from "@/services/api";
 import { cn } from "@/lib/utils";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 
 type AppHeaderProps = {
   title?: string;
@@ -18,6 +19,7 @@ export function AppHeader({ title }: AppHeaderProps) {
   const { logout, user, isDemo } = useAuth();
   const apiEnabled = isApiConfigured();
   const { unreadCount = 0 } = useReminders();
+  const { isInstallable, triggerInstall } = usePwaInstall();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
@@ -57,6 +59,17 @@ export function AppHeader({ title }: AppHeaderProps) {
           )}
         </Link>
       </Button>
+      {isInstallable && (
+        <Button
+          onClick={triggerInstall}
+          variant="outline"
+          size="sm"
+          className="shrink-0 flex items-center gap-1.5 border-primary/40 hover:border-primary text-primary hover:bg-primary/10 shadow-[0_0_8px_rgba(0,180,216,0.1)] hover:shadow-[0_0_12px_rgba(0,180,216,0.3)] animate-pulse"
+        >
+          <Download className="h-3.5 w-3.5" />
+          <span>Install App</span>
+        </Button>
+      )}
       {apiEnabled && !isDemo && user && (
         <span className="hidden text-xs text-muted-foreground md:inline">{user.name}</span>
       )}

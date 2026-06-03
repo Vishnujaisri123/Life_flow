@@ -29,8 +29,21 @@ export function getStoredToken(): string | null {
 export function setStoredToken(token: string | null): void {
   memoryToken = token;
   try {
-    if (token) sessionStorage.setItem(TOKEN_KEY, token);
-    else sessionStorage.removeItem(TOKEN_KEY);
+    if (token) {
+      sessionStorage.setItem(TOKEN_KEY, token);
+      if (typeof window !== "undefined" && "caches" in window) {
+        caches.open("auth-cache").then((cache) => {
+          cache.put("/token", new Response(token));
+        });
+      }
+    } else {
+      sessionStorage.removeItem(TOKEN_KEY);
+      if (typeof window !== "undefined" && "caches" in window) {
+        caches.open("auth-cache").then((cache) => {
+          cache.delete("/token");
+        });
+      }
+    }
   } catch {
     /* private browsing / blocked storage */
   }
