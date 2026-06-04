@@ -1,4 +1,5 @@
-import { isBefore, isToday, parseISO, startOfDay } from "date-fns";
+import { isBefore, parseISO, startOfDay } from "date-fns";
+import { isTodayIST } from "@/utils/ist";
 import type { TaskItem } from "@/services/placeholders";
 import type { AiTaskContext } from "@/types/ai";
 
@@ -16,7 +17,7 @@ export function buildTaskContextFromItems(tasks: TaskItem[]): AiTaskContext {
   const todayTasks = open.filter((t) => {
     const due = getDueDate(t);
     if (!due) return t.due === "Today";
-    return isToday(due);
+    return isTodayIST(due);
   });
 
   let overdueCount = 0;
@@ -30,7 +31,7 @@ export function buildTaskContextFromItems(tasks: TaskItem[]): AiTaskContext {
     if (isBefore(dueDay, todayStart)) {
       overdueCount += 1;
       if (overdueTitles.length < 8) overdueTitles.push(task.title);
-    } else if (!isToday(due) && upcomingTitles.length < 8) {
+    } else if (!isTodayIST(due) && upcomingTitles.length < 8) {
       upcomingTitles.push(task.title);
     }
   }

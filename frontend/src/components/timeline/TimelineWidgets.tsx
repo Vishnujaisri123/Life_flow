@@ -1,19 +1,19 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, CircleDashed, Clock, Target, Zap } from "lucide-react";
-import { isToday } from "date-fns";
+import { isTodayIST } from "@/utils/ist";
 import type { TaskItem } from "@/services/placeholders";
 
 export function TimelineStatistics({ tasks }: { tasks: TaskItem[] }) {
   const stats = useMemo(() => {
     const todayTasks = tasks.filter((t) => {
       const d = new Date(t.startTime || t.dueDate || new Date());
-      return isToday(d) && !t.completed;
+      return isTodayIST(d) && !t.completed;
     });
     
     const completedTasks = tasks.filter((t) => {
       const d = new Date(t.startTime || t.dueDate || new Date());
-      return isToday(d) && t.completed;
+      return isTodayIST(d) && t.completed;
     });
 
     const totalTasks = todayTasks.length + completedTasks.length;

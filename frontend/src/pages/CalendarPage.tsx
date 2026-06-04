@@ -126,7 +126,7 @@ export function CalendarPage() {
                     <span
                       className={cn(
                         "flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium",
-                        isToday(day) && "bg-primary text-primary-foreground"
+                        dateStr === todayKey && "bg-primary text-primary-foreground"
                       )}
                     >
                       {format(day, "d")}
