@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { PageShell } from "@/components/page/PageShell";
 import { LoadingSkeleton } from "@/components/page/LoadingSkeleton";
@@ -15,10 +15,8 @@ import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import {
   useTasks,
-  useTodayTasks,
   useTaskMutations,
   useTaskFilters,
-  applyClientFilters,
 } from "@/hooks/useTasks";
 import { isApiConfigured } from "@/services/api";
 import type { TaskItem } from "@/services/placeholders";
@@ -35,7 +33,6 @@ const sectionEmptyCopy = {
 export function TasksPage() {
   const simulatedLoading = useSimulatedLoading();
   const { tasks: apiTasks, isLoading: apiLoading, isDemo } = useTasks();
-  const todayQuery = useTodayTasks();
   const {
     createTask,
     updateTask,
@@ -64,12 +61,7 @@ export function TasksPage() {
     categories,
   } = useTaskFilters(sourceTasks);
 
-  const displayTasks = useMemo(() => {
-    if (activeSection === "today" && !isDemo && todayQuery.data) {
-      return applyClientFilters(todayQuery.data, filters);
-    }
-    return filteredDisplay;
-  }, [activeSection, isDemo, todayQuery.data, filteredDisplay, filters]);
+  const displayTasks = filteredDisplay;
 
   const [addOpen, setAddOpen] = useState(false);
   const [editTask, setEditTask] = useState<TaskItem | null>(null);
@@ -78,15 +70,12 @@ export function TasksPage() {
 
   const isLoading = isApiConfigured() ? apiLoading : simulatedLoading;
 
-  const sectionCounts = useMemo(
-    () => ({
-      all: filtered.length,
-      today: sections.today.length,
-      upcoming: sections.upcoming.length,
-      missed: sections.missed.length,
-    }),
-    [filtered.length, sections],
-  );
+  const sectionCounts = {
+    all: filtered.length,
+    today: sections.today.length,
+    upcoming: sections.upcoming.length,
+    missed: sections.missed.length,
+  };
 
   function handleReorder(from: number, to: number) {
     if (isDemo) {

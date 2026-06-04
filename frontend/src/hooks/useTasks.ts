@@ -35,7 +35,7 @@ function invalidateTaskQueries(queryClient: ReturnType<typeof useQueryClient>) {
 }
 
 function getTaskDueDate(task: TaskItem): Date | null {
-  const raw = task.dueDate ?? task.endTime;
+  const raw = task.dueDate ?? task.endTime ?? task.startTime;
   if (!raw) return null;
   const d = parseISO(raw);
   return Number.isNaN(d.getTime()) ? null : d;
