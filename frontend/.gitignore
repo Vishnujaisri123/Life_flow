@@ -23,6 +23,9 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Firebase config with real credentials (use firebase-config.json.example as template)
+public/firebase-config.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
