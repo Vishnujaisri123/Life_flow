@@ -11,6 +11,7 @@ import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { TaskSearch } from "@/components/tasks/TaskSearch";
 import { TaskProgressBar } from "@/components/tasks/TaskProgressBar";
 import { TaskSections } from "@/components/tasks/TaskSections";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import {
   useTasks,
@@ -73,6 +74,7 @@ export function TasksPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [editTask, setEditTask] = useState<TaskItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TaskItem | null>(null);
+  const [viewTask, setViewTask] = useState<TaskItem | null>(null);
 
   const isLoading = isApiConfigured() ? apiLoading : simulatedLoading;
 
@@ -183,6 +185,7 @@ export function TasksPage() {
             onComplete={(id) => completeTask(id)}
             onEdit={(t) => setEditTask(t)}
             onDelete={(t) => setDeleteTarget(t)}
+            onView={(t) => setViewTask(t)}
           />
         )}
       </div>
@@ -210,6 +213,16 @@ export function TasksPage() {
         taskTitle={deleteTarget?.title}
         onConfirm={confirmDelete}
         isDeleting={isDeleting}
+      />
+
+      <TaskDetailModal
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => !open && setViewTask(null)}
+        onEdit={(t) => { setViewTask(null); setEditTask(t); }}
+        onComplete={(id) => { completeTask(id); setViewTask(null); }}
+        onDelete={(t) => { setViewTask(null); setDeleteTarget(t); }}
+        apiEnabled={apiEnabled}
       />
     </PageShell>
   );

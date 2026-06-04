@@ -4,7 +4,7 @@ export type AiChatMode = "general" | "motivate" | "schedule" | "review" | "plan"
 
 export type AiMessage = {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: AiMessageRole;
   content: string;
   createdAt: number;
   mode?: AiChatMode;

@@ -13,6 +13,7 @@ export type ApiTask = {
   startTime?: string | null;
   endTime?: string | null;
   dueDate?: string | null;
+  duration?: number | null;
   reminderEnabled?: boolean;
   reminderBefore?: number;
   soundEnabled?: boolean;
@@ -70,6 +71,7 @@ export function mapApiTaskToItem(task: ApiTask): TaskItem {
     soundEnabled: task.soundEnabled,
     vibrationEnabled: task.vibrationEnabled,
     fullscreenAlertEnabled: task.fullscreenAlertEnabled,
+    duration: task.duration,
     recurrenceFrequency: task.recurrenceFrequency ?? null,
     recurrenceInterval: task.recurrenceInterval,
     recurrenceEnd: task.recurrenceEnd,

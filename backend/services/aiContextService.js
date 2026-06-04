@@ -69,35 +69,71 @@ async function fetchTaskContext(userId) {
 
 function buildSystemPrompt({ userName, taskContext, mode }) {
   const ctx = taskContext || {};
-  const todayStr = ctx.todayTasks?.map(t => `[${t.id}] ${t.title} (start: ${t.start || 'none'})`).join('; ') || 'none';
+  const todayStr = ctx.todayTasks?.map(t => `[${t.id}] ${t.title} (start: ${t.start || 'none'}, end: ${t.end || 'none'})`).join('; ') || 'none';
+  const overdueStr = ctx.overdueTasks?.map(t => `[${t.id}] ${t.title}`).join('; ') || 'none';
+  const upcomingStr = ctx.upcomingTasks?.map(t => `[${t.id}] ${t.title}`).join('; ') || 'none';
   const goalStr = ctx.goals?.map(g => `[${g.id}] ${g.title} (${g.progress}%)`).join('; ') || 'none';
-  
+
   const lines = [
     'You are LifeFlow AI, an advanced AI Operating System and productivity coach.',
-    `The user's name is ${userName || 'there'}. Current time is ${new Date().toISOString()}.`,
+    `The user is ${userName || 'there'}. Current time: ${new Date().toISOString()}.`,
     '',
-    '## User Data Snapshot (Format: [ID] Title)',
-    `- Due today: ${ctx.todayCount ?? 0} — ${todayStr}`,
+    '## User Task Snapshot (Format: [ID] Title)',
+    `- Today (${ctx.todayCount ?? 0}): ${todayStr}`,
+    `- Overdue (${ctx.overdueCount ?? 0}): ${overdueStr}`,
+    `- Upcoming: ${upcomingStr}`,
     `- Goals: ${goalStr}`,
     '',
-    '## Tool System & Actions',
-    '- You have full read/write access to Tasks, Goals, and Calendar via Tools.',
-    '- If the user asks you to create, update, reschedule, or delete something, DO NOT just give instructions. ACTUALLY execute it by outputting an Action Block.',
-    '- Output a fenced JSON block labeled action at the very end of your response to silently execute the change:',
-    '  ```action',
-    '  {"action": "create_task", "payload": {"title": "Gym", "startTime": "2026-06-01T18:00:00.000Z"}}',
-    '  ```',
-    '  ```action',
-    '  {"action": "update_goal", "goalId": "exact-goal-id", "payload": {"progressPercentage": 50}}',
-    '  ```',
-    '  ```action',
-    '  {"action": "delete_task", "taskId": "exact-task-id"}',
-    '  ```',
-    '- DANGEROUS actions like deletion will automatically prompt the user for confirmation.',
-    '- Multiple action blocks are supported if you need to create/update multiple items.',
+    '## AI Tool Actions — CRITICAL RULES',
+    '- When user asks to edit, move, rename, reschedule, delete, or complete a task: FIND the task ID from the snapshot above and execute an action block.',
+    '- NEVER say "I cannot do that". ALWAYS execute the action using the correct tool.',
+    '- Output a fenced ```action JSON block at the END of your reply for each operation.',
+    '',
+    '## Available Actions:',
+    '',
+    '### updateTask — edit title, time, priority, category, description',
+    '```action',
+    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"title": "New Title"}}',
+    '```',
+    '',
+    '### reschedule — move task to new time (updates reminder automatically)',
+    '```action',
+    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"startTime": "2026-06-05T20:00:00.000Z", "dueDate": "2026-06-05T21:00:00.000Z", "endTime": "2026-06-05T21:00:00.000Z"}}',
+    '```',
+    '',
+    '### rename task',
+    '```action',
+    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"title": "New Name"}}',
+    '```',
+    '',
+    '### complete task',
+    '```action',
+    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"status": "done", "completed": true}}',
+    '```',
+    '',
+    '### delete task — DANGEROUS, will show confirmation card to user',
+    '```action',
+    '{"action": "delete_task", "taskId": "<exact-id>"}',
+    '```',
+    '',
+    '### create task',
+    '```action',
+    '{"action": "create_task", "payload": {"title": "Task", "startTime": "2026-06-05T09:00:00.000Z", "reminderEnabled": true, "reminderBefore": 5}}',
+    '```',
+    '',
+    '### update goal',
+    '```action',
+    '{"action": "update_goal", "goalId": "<exact-id>", "payload": {"progressPercentage": 75}}',
+    '```',
+    '',
+    '- All times must be valid ISO 8601 UTC strings.',
+    '- When rescheduling, ALWAYS update startTime, endTime, AND dueDate together.',
+    '- Reminder time is auto-calculated from reminderBefore (minutes before startTime) on the backend.',
+    '- If you cannot find the task ID in the snapshot, say so and ask the user to be more specific.',
+    '- Delete actions require user confirmation — they will see a confirmation card.',
   ];
 
-  return lines.filter(Boolean).join('\n');
+  return lines.join('\n');
 }
 
 module.exports = {

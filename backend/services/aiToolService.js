@@ -99,7 +99,18 @@ async function processAiAction(action, userId) {
         }
         return { success: true, type: 'delete_task', message: 'Task deleted.' };
       }
-      return { requiresConfirmation: true, action };
+      // Return confirmation with task details for the UI card
+      const taskPreview = await Task.findOne({ _id: action.taskId, userId }).select('title dueDate startTime');
+      return {
+        requiresConfirmation: true,
+        action: {
+          ...action,
+          payload: {
+            title: taskPreview?.title || 'Unknown Task',
+            dueDate: taskPreview?.dueDate || taskPreview?.startTime || null,
+          },
+        },
+      };
     }
 
     if (action.action === 'delete_goal') {

@@ -13,6 +13,11 @@ export type TaskItem = {
   startTime?: string | null;
   endTime?: string | null;
   reminderEnabled?: boolean;
+  reminderBefore?: number;
+  soundEnabled?: boolean;
+  vibrationEnabled?: boolean;
+  fullscreenAlertEnabled?: boolean;
+  duration?: number | null;
   recurrenceFrequency?: RecurrenceFrequency;
   recurrenceInterval?: number;
   recurrenceEnd?: string | null;

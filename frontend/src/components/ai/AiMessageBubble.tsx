@@ -65,27 +65,38 @@ export function AiMessageBubble({ message, onConfirmAction }: Props) {
 
       {/* Pending Confirmations (Dangerous Actions) */}
       {message.pendingConfirmations?.map((conf, idx) => {
-        if (deniedActions.has(conf.action)) return null;
+        if (deniedActions.has(String(idx))) return null;
+        const isDelete = conf.action === 'delete_task';
         return (
           <div key={idx} className="glass border border-destructive/50 rounded-xl p-4 flex flex-col gap-3 w-full">
             <div className="flex items-center gap-2 text-destructive">
-              <span className="text-sm font-bold uppercase tracking-wider">Requires Confirmation</span>
+              <span className="text-sm font-bold uppercase tracking-wider">
+                {isDelete ? '🗑 Delete Task?' : 'Confirm Action'}
+              </span>
             </div>
-            <p className="text-sm">
-              AI wants to perform a destructive action: <strong>{conf.action}</strong>
-            </p>
+            {isDelete && conf.payload?.title && (
+              <div className="space-y-1 text-sm">
+                <div><span className="text-muted-foreground">Task: </span><strong>{conf.payload.title}</strong></div>
+                {conf.payload?.dueDate && (
+                  <div><span className="text-muted-foreground">Date: </span>{new Date(conf.payload.dueDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                )}
+              </div>
+            )}
+            {!isDelete && (
+              <p className="text-sm">AI wants to perform: <strong>{conf.action}</strong></p>
+            )}
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => onConfirmAction?.(conf, message.id)}
                 className="px-4 py-1.5 text-xs font-semibold bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-md transition-colors"
               >
-                Allow Action
+                {isDelete ? 'Confirm Delete' : 'Allow Action'}
               </button>
               <button
-                onClick={() => setDeniedActions((prev) => new Set(prev).add(conf.action))}
+                onClick={() => setDeniedActions((prev) => new Set(prev).add(String(idx)))}
                 className="px-4 py-1.5 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md transition-colors"
               >
-                Deny
+                Cancel
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Bell, Calendar, Clock, AlertTriangle, Plus } from "lucide-react";
+import { ArrowRight, Bell, Calendar, Clock, AlertTriangle, Plus, Timer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { TaskItem } from "@/services/placeholders";
@@ -10,6 +10,21 @@ import { useReminderContext } from "@/context/ReminderContext";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return '00h 00m';
+  const totalMins = Math.floor(ms / 60_000);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+}
+
+function computeReminderTime(task: TaskItem): string | null {
+  const base = task.startTime ?? task.dueDate;
+  if (!base || task.reminderBefore == null) return null;
+  return new Date(new Date(base).getTime() - task.reminderBefore * 60_000)
+    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export function ActiveTaskWidget({ tasks }: { tasks: TaskItem[] }) {
@@ -56,6 +71,54 @@ export function ActiveTaskWidget({ tasks }: { tasks: TaskItem[] }) {
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
           <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${percent}%` }} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function NextTaskWidget({ tasks }: { tasks: TaskItem[] }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const next = tasks
+    .filter(t => t.startTime && t.status !== 'done' && !t.completed && new Date(t.startTime) > now)
+    .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime())[0];
+
+  if (!next) return null;
+
+  const msUntil = new Date(next.startTime!).getTime() - now.getTime();
+  const reminderAt = computeReminderTime(next);
+
+  return (
+    <Card className="glass border-primary/40 bg-primary/5 shadow-[var(--shadow-glow-cyan)]">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+          <Timer className="h-4 w-4 text-primary" />
+          Next Task
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="font-semibold text-base">{next.title}</div>
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-muted-foreground">Starts in</span>
+            <span className="font-mono font-bold text-primary text-sm">{formatCountdown(msUntil)}</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-muted-foreground">Time</span>
+            <span className="font-medium">{formatTime(next.startTime!)}</span>
+          </div>
+          {reminderAt && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-muted-foreground">Reminder</span>
+              <span className="font-medium text-amber-400">{reminderAt}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

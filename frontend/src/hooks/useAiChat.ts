@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { isApiConfigured } from "@/services/api";
@@ -50,6 +50,7 @@ function newId() {
 export function useAiChat() {
   const { user } = useAuth();
   const key = storageKey(user?.id ?? null);
+  const queryClient = useQueryClient();
 
   const [messages, setMessages] = useState<AiMessage[]>(() => {
     const stored = loadLocalMessages(storageKey(null));
@@ -156,8 +157,11 @@ export function useAiChat() {
     try {
       const res = await import("@/services/aiApi").then(m => m.confirmAiAction(action));
       toast.success("Action confirmed and executed");
-      
-      // Update the specific message to remove the pending confirmation and add the action card
+      // Invalidate tasks + reminders so UI reflects the change
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      void queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      void queryClient.invalidateQueries({ queryKey: ["ai-task-context"] });
       setMessages((prev) => prev.map(m => {
         if (m.id === msgId) {
           const outcome = res.outcome;
@@ -167,10 +171,10 @@ export function useAiChat() {
         }
         return m;
       }));
-    } catch (err) {
+    } catch {
       toast.error("Failed to execute action");
     }
-  }, []);
+  }, [queryClient]);
 
   const clearChat = useCallback(async () => {
     setMessages([{ ...WELCOME, createdAt: Date.now() }]);
@@ -190,6 +194,7 @@ export function useAiChat() {
     setMode,
     sendMessage,
     clearChat,
+    confirmAction,
     taskContext,
     tasksLoading: tasksQuery.isLoading,
     historyLoading: historyQuery.isLoading,

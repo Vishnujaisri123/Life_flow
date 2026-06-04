@@ -84,9 +84,9 @@ function TaskBlock({ task, onQuickAction }: { task: TaskItem; onQuickAction: (id
         <span>
           {format(start, "h:mm a")} - {format(end, "h:mm a")} ({durationMins}m)
         </span>
-        {task.reminderEnabled && task.reminderTime && (
+        {task.reminderEnabled && task.reminderBefore != null && task.startTime && (
           <Badge variant="outline" className="h-4 px-1 text-[9px] flex gap-1 items-center bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-            <Bell className="w-2 h-2" /> {format(new Date(task.reminderTime), "h:mm a")}
+            <Bell className="w-2 h-2" /> {format(new Date(new Date(task.startTime).getTime() - task.reminderBefore * 60_000), "h:mm a")}
           </Badge>
         )}
       </div>

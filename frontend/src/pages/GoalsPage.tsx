@@ -51,7 +51,7 @@ export function GoalsPage() {
     <PageShell
       title="Goals"
       description="Set long-term objectives, track milestones, and conquer your ambitions."
-      action={
+      actions={
         <Button onClick={handleCreate} className="shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]">
           <Plus className="mr-2 h-4 w-4" /> New Goal
         </Button>

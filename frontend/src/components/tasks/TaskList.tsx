@@ -14,6 +14,7 @@ type TaskListProps = {
   onComplete?: (id: string) => void;
   onEdit?: (task: TaskItem) => void;
   onDelete?: (task: TaskItem) => void;
+  onView?: (task: TaskItem) => void;
 };
 
 export function TaskList({
@@ -25,13 +26,12 @@ export function TaskList({
   onComplete,
   onEdit,
   onDelete,
+  onView,
 }: TaskListProps) {
   const dnd = useDragAndDrop((from, to) => onReorder?.(from, to));
 
   if (tasks.length === 0) {
-    return (
-      <EmptyState icon={ListTodo} title={emptyTitle} description={emptyDescription} />
-    );
+    return <EmptyState icon={ListTodo} title={emptyTitle} description={emptyDescription} />;
   }
 
   return (
@@ -54,9 +54,8 @@ export function TaskList({
             onEdit={onEdit}
             onDelete={onDelete}
             onMoveUp={index > 0 ? () => onReorder?.(index, index - 1) : undefined}
-            onMoveDown={
-              index < tasks.length - 1 ? () => onReorder?.(index, index + 1) : undefined
-            }
+            onMoveDown={index < tasks.length - 1 ? () => onReorder?.(index, index + 1) : undefined}
+            onClick={onView}
           />
         ))}
       </AnimatePresence>

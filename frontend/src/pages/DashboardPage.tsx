@@ -13,7 +13,7 @@ import { useTasks, useTaskFilters, useTaskMutations } from "@/hooks/useTasks";
 import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { isApiConfigured } from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
-import { ActiveTaskWidget, MissedTasksWidget, TodaysScheduleWidget, DashboardRemindersWidget } from "@/components/dashboard/TaskWidgets";
+import { ActiveTaskWidget, MissedTasksWidget, TodaysScheduleWidget, DashboardRemindersWidget, NextTaskWidget } from "@/components/dashboard/TaskWidgets";
 import { ROUTES } from "@/routes/paths";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -108,6 +108,7 @@ export function DashboardPage() {
 
         <div className="space-y-6">
           <ActiveTaskWidget tasks={sections.today} />
+          <NextTaskWidget tasks={sections.upcoming.concat(sections.today)} />
           <DashboardRemindersWidget />
           <MissedTasksWidget missed={sections.missed} />
 
