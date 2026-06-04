@@ -187,3 +187,8 @@ export async function completeTask(id: string): Promise<ApiTask> {
 export async function deleteTask(id: string): Promise<{ id: string }> {
   return apiDelete<{ id: string }>(`/tasks/${id}`);
 }
+
+export async function syncGoogleCalendarTasks(): Promise<ApiTask[]> {
+  return apiPost<ApiTask[]>("/tasks/sync-google");
+}
+

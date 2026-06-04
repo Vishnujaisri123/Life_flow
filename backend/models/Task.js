@@ -54,11 +54,11 @@ const taskSchema = new mongoose.Schema(
     },
     reminderEnabled: {
       type: Boolean,
-      default: false,
+      default: true,
     },
     reminderBefore: {
       type: Number,
-      default: 0,
+      default: 5,
     },
     soundEnabled: {
       type: Boolean,

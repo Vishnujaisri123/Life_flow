@@ -70,6 +70,7 @@ async function getMe(req, res) {
       totalTasks: user.totalTasks,
       completedTasks: user.completedTasks,
       createdAt: user.createdAt,
+      googleRefreshToken: user.googleRefreshToken ? '**set**' : null,
     },
   });
 }
@@ -111,6 +112,7 @@ async function updateMe(req, res, next) {
         totalTasks: user.totalTasks,
         completedTasks: user.completedTasks,
         createdAt: user.createdAt,
+        googleRefreshToken: user.googleRefreshToken ? '**set**' : null,
       },
     });
   } catch (error) {

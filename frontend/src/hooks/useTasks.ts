@@ -16,6 +16,7 @@ import {
   reorderTasks,
   taskFormToPayload,
   updateTask,
+  syncGoogleCalendarTasks,
   type ApiTask,
 } from "@/services/taskApi";
 import type { TaskFormValues, TaskFiltersState } from "@/components/tasks/types";
@@ -247,6 +248,15 @@ export function useTaskMutations() {
     onError,
   });
 
+  const startMutation = useMutation({
+    mutationFn: (id: string) => updateTask(id, { status: "in_progress" }),
+    onSuccess: () => {
+      invalidateTaskQueries(queryClient);
+      toast.success("Task started");
+    },
+    onError,
+  });
+
   const completeMutation = useMutation({
     mutationFn: (id: string) => completeTask(id),
     onSuccess: () => {
@@ -264,6 +274,18 @@ export function useTaskMutations() {
       toast.success("Task deleted");
     },
     onError,
+  });
+
+  const syncGoogleMutation = useMutation({
+    mutationFn: () => syncGoogleCalendarTasks(),
+    onSuccess: () => {
+      invalidateTaskQueries(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      toast.success("Google Calendar tasks synchronized");
+    },
+    onError: (err: any) => {
+      console.warn("Google Calendar sync failed:", err);
+    },
   });
 
   const reorderLocal = useCallback(
@@ -286,12 +308,16 @@ export function useTaskMutations() {
     updateTask: updateMutation.mutate,
     reorderTasks: reorderMutation.mutate,
     reorderLocal,
+    startTask: startMutation.mutate,
     completeTask: completeMutation.mutate,
     deleteTask: deleteMutation.mutate,
+    syncGoogleCalendar: syncGoogleMutation.mutate,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isReordering: reorderMutation.isPending,
+    isStarting: startMutation.isPending,
     isCompleting: completeMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isSyncingGoogle: syncGoogleMutation.isPending,
   };
 }

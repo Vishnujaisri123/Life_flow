@@ -198,10 +198,41 @@ async function deleteCalendarEvent(user, task) {
   }
 }
 
+async function importEventsFromGoogle(user) {
+  try {
+    if (!user.googleRefreshToken) return [];
+
+    const token = await refreshAccessToken(user);
+    // Query events from 1 day ago to retrieve recent updates
+    const timeMin = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const url = `${GOOGLE_CALENDAR_API}?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      console.warn('[Google Calendar Sync] Import failed:', body.error?.message || response.statusText);
+      return [];
+    }
+
+    const body = await response.json();
+    return body.items || [];
+  } catch (error) {
+    console.warn('[Google Calendar Sync] Import failed gracefully:', error.message);
+    return [];
+  }
+}
+
 module.exports = {
   getAuthUrl,
   getTokensFromCode,
   refreshAccessToken,
   upsertCalendarEvent,
   deleteCalendarEvent,
+  importEventsFromGoogle,
 };

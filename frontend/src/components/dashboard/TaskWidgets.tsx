@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Bell, Calendar, Clock, AlertTriangle } from "lucide-react";
+import { ArrowRight, Bell, Calendar, Clock, AlertTriangle, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { TaskItem } from "@/services/placeholders";
 import { ROUTES } from "@/routes/paths";
+import { useReminderInbox } from "@/hooks/useReminders";
+import { useReminderContext } from "@/context/ReminderContext";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -121,7 +123,9 @@ export function TodaysScheduleWidget({ today }: { today: TaskItem[] }) {
   );
 }
 
-export function UpcomingReminderWidget({ tasks }: { tasks: TaskItem[] }) {
+export function DashboardRemindersWidget() {
+  const { reminders } = useReminderInbox();
+  const { setOpenScheduler } = useReminderContext();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -129,32 +133,113 @@ export function UpcomingReminderWidget({ tasks }: { tasks: TaskItem[] }) {
     return () => clearInterval(id);
   }, []);
 
-  const upcoming = tasks
-    .filter(t => t.reminderEnabled && t.startTime && t.status !== "done")
-    .map(t => {
-      const start = new Date(t.startTime!).getTime();
-      const trigger = start - (t.reminderBefore ?? 0) * 60_000;
-      return { ...t, triggerTime: trigger };
-    })
-    .filter(t => t.triggerTime > now.getTime())
-    .sort((a, b) => a.triggerTime - b.triggerTime)[0];
+  const activeReminders = reminders.filter(r => r.status !== "dismissed");
 
-  if (!upcoming) return null;
+  // Missed reminders: reminderTime or snoozeTime is in the past
+  const missed = activeReminders.filter(r => {
+    const time = r.snoozeUntil ? new Date(r.snoozeUntil) : new Date(r.reminderTime);
+    return time <= now;
+  }).sort((a, b) => new Date(b.reminderTime).getTime() - new Date(a.reminderTime).getTime());
 
-  const mins = Math.ceil((upcoming.triggerTime - now.getTime()) / 60000);
+  // Upcoming reminders: reminderTime is in the future
+  const upcoming = activeReminders.filter(r => {
+    const time = r.snoozeUntil ? new Date(r.snoozeUntil) : new Date(r.reminderTime);
+    return time > now;
+  }).sort((a, b) => new Date(a.reminderTime).getTime() - new Date(b.reminderTime).getTime());
+
+  const nextReminder = upcoming[0] || null;
+  const otherUpcoming = upcoming.slice(1, 4);
+
+  const formatTaskTime = (iso: string) => {
+    return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getTitle = (r: any) => {
+    if (typeof r.taskId === "object" && r.taskId !== null) {
+      return r.taskId.title || "Untitled Task";
+    }
+    return "Task";
+  };
 
   return (
-    <Card className="glass border-primary/30 bg-primary/5">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <Bell className="h-4 w-4" />
-          Upcoming Reminder
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="font-semibold text-lg">{upcoming.title}</div>
-        <div className="text-sm text-muted-foreground">Alert in {mins} {mins === 1 ? 'minute' : 'minutes'}</div>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {nextReminder && (
+        <Card className="glass border-primary/40 bg-primary/5 shadow-[var(--shadow-glow-cyan)]">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Bell className="h-4 w-4 text-primary animate-bounce" />
+              Next Reminder
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="font-semibold text-lg">{getTitle(nextReminder)}</div>
+            <div className="text-sm text-muted-foreground">
+              Alert at {formatTaskTime(nextReminder.snoozeUntil || nextReminder.reminderTime)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {missed.length > 0 && (
+        <Card className="glass border-destructive/50 bg-destructive/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <AlertTriangle className="h-4 w-4 text-destructive animate-pulse" />
+              Missed Reminders ({missed.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {missed.slice(0, 3).map(r => (
+              <div key={r.id} className="flex justify-between items-center border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{getTitle(r)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Was scheduled for {formatTaskTime(r.reminderTime)}
+                  </span>
+                </div>
+                <span className="text-xs font-semibold text-destructive px-2 py-0.5 rounded-full bg-destructive/10">
+                  Missed
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="glass border-border/60">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Calendar className="h-4 w-4" />
+            Upcoming Reminders
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => setOpenScheduler(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {otherUpcoming.length === 0 && !nextReminder ? (
+            <p className="text-xs text-muted-foreground">No upcoming reminders scheduled.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {otherUpcoming.map(r => (
+                <div key={r.id} className="flex justify-between items-center border-b border-border/40 pb-2 last:border-0 last:pb-0">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{getTitle(r)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      Reminding at {formatTaskTime(r.snoozeUntil || r.reminderTime)}
+                    </span>
+                  </div>
+                  <span className="text-xs text-primary px-2 py-0.5 rounded-full bg-primary/10">
+                    Scheduled
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
+

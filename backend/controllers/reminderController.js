@@ -44,7 +44,7 @@ async function getReminders(req, res, next) {
     if (req.query.status) filter.status = req.query.status;
 
     const reminders = await Reminder.find(filter)
-      .populate('taskId', 'title fullscreenAlertEnabled soundEnabled vibrationEnabled')
+      .populate('taskId', 'title description startTime endTime dueDate status fullscreenAlertEnabled soundEnabled vibrationEnabled')
       .sort({ reminderTime: 1 });
     return sendSuccess(res, { message: 'Reminders fetched', data: reminders });
   } catch (error) {
@@ -60,7 +60,7 @@ async function getDueReminders(req, res, next) {
     const candidates = await Reminder.find({
       userId: req.user._id,
       status: { $in: ['pending', 'snoozed', 'triggered'] },
-    }).populate('taskId', 'title fullscreenAlertEnabled soundEnabled vibrationEnabled');
+    }).populate('taskId', 'title description startTime endTime dueDate status fullscreenAlertEnabled soundEnabled vibrationEnabled');
 
     const due = candidates.filter((r) => {
       const t = effectiveDueTime(r);
@@ -79,7 +79,7 @@ async function getReminderHistory(req, res, next) {
     const history = await ReminderHistory.find({ userId: req.user._id })
       .sort({ triggeredAt: -1 })
       .limit(limit)
-      .populate('taskId', 'title fullscreenAlertEnabled soundEnabled vibrationEnabled');
+      .populate('taskId', 'title description startTime endTime dueDate status fullscreenAlertEnabled soundEnabled vibrationEnabled');
     return sendSuccess(res, { message: 'Reminder history', data: history });
   } catch (error) {
     return next(error);

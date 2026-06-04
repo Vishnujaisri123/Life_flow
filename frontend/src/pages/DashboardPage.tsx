@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Flame, Sparkles } from "lucide-react";
 import { PageShell } from "@/components/page/PageShell";
@@ -8,19 +9,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { useTasks, useTaskFilters } from "@/hooks/useTasks";
+import { useTasks, useTaskFilters, useTaskMutations } from "@/hooks/useTasks";
 import { useSimulatedLoading } from "@/hooks/useSimulatedLoading";
 import { isApiConfigured } from "@/services/api";
-import { ActiveTaskWidget, MissedTasksWidget, TodaysScheduleWidget, UpcomingReminderWidget } from "@/components/dashboard/TaskWidgets";
+import { useAuth } from "@/context/AuthContext";
+import { ActiveTaskWidget, MissedTasksWidget, TodaysScheduleWidget, DashboardRemindersWidget } from "@/components/dashboard/TaskWidgets";
 import { ROUTES } from "@/routes/paths";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const apiEnabled = isApiConfigured();
   const simulatedLoading = useSimulatedLoading();
+  const queryClient = useQueryClient();
   const { tasks, isLoading: tasksLoading, isDemo } = useTasks();
   const { stats, data, isLoading: analyticsLoading } = useAnalytics();
-  
+  const { syncGoogleCalendar } = useTaskMutations();
+
   const { sections } = useTaskFilters(tasks);
+
+  const triggerGoogleSync = useCallback(() => {
+    syncGoogleCalendar(undefined, {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      },
+    });
+  }, [syncGoogleCalendar, queryClient]);
+
+  useEffect(() => {
+    if (!isDemo && user?.googleRefreshToken) {
+      triggerGoogleSync();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.googleRefreshToken]);
 
   const isLoading = apiEnabled
     ? analyticsLoading || tasksLoading
@@ -87,7 +108,7 @@ export function DashboardPage() {
 
         <div className="space-y-6">
           <ActiveTaskWidget tasks={sections.today} />
-          <UpcomingReminderWidget tasks={sections.today} />
+          <DashboardRemindersWidget />
           <MissedTasksWidget missed={sections.missed} />
 
           <Card className="glass border-border/60">

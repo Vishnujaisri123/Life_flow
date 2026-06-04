@@ -7,6 +7,7 @@ const {
   reorderTasks,
   completeTask,
   deleteTask,
+  syncGoogleCalendar,
 } = require('../controllers/taskController');
 const { protect } = require('../middleware/auth');
 
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.post('/sync-google', syncGoogleCalendar);
 router.get('/today', getTodayTasks);
 router.get('/', getTasks);
 router.patch('/reorder', reorderTasks);

@@ -12,6 +12,7 @@ export type AuthUser = {
   totalTasks: number;
   completedTasks: number;
   createdAt: string;
+  googleRefreshToken?: string | null;
 };
 
 export type AuthPayload = {

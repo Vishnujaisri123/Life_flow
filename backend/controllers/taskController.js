@@ -208,6 +208,47 @@ async function deleteTask(req, res, next) {
   }
 }
 
+async function syncGoogleCalendar(req, res, next) {
+  try {
+    if (!req.user.googleRefreshToken) {
+      return sendSuccess(res, { message: 'Google Calendar not connected', data: [] });
+    }
+
+    const events = await googleCalendarService.importEventsFromGoogle(req.user);
+    const importedTasks = [];
+
+    for (const event of events) {
+      let task = await Task.findOne({ googleEventId: event.id, userId: req.user._id });
+      if (!task) {
+        const startTime = event.start.dateTime ? new Date(event.start.dateTime) : (event.start.date ? new Date(event.start.date) : null);
+        const endTime = event.end.dateTime ? new Date(event.end.dateTime) : (event.end.date ? new Date(event.end.date) : null);
+
+        task = await Task.create({
+          title: event.summary || 'Google Calendar Event',
+          description: event.description || '',
+          startTime,
+          endTime,
+          dueDate: endTime,
+          googleEventId: event.id,
+          userId: req.user._id,
+          reminderEnabled: true,
+          reminderBefore: 5,
+        });
+
+        req.user.totalTasks = (req.user.totalTasks || 0) + 1;
+        await req.user.save();
+
+        await syncTaskReminder(task);
+        importedTasks.push(task);
+      }
+    }
+
+    return sendSuccess(res, { message: `Calendar synced. Imported ${importedTasks.length} tasks.`, data: importedTasks });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getTasks,
   getTodayTasks,
@@ -216,4 +257,7 @@ module.exports = {
   reorderTasks,
   completeTask,
   deleteTask,
+  syncTaskReminder,
+  syncGoogleCalendar,
 };
+

@@ -6,7 +6,7 @@ export type NotificationChannel = "push" | "email" | "in_app" | "browser";
 
 export type ApiReminder = {
   id: string;
-  taskId: string | { id: string; title?: string; fullscreenAlertEnabled?: boolean; soundEnabled?: boolean; vibrationEnabled?: boolean };
+  taskId: string | { id: string; title?: string; description?: string; startTime?: string | null; endTime?: string | null; dueDate?: string | null; status?: string; fullscreenAlertEnabled?: boolean; soundEnabled?: boolean; vibrationEnabled?: boolean };
   reminderTime: string;
   soundType: ReminderSoundType;
   notificationType: NotificationChannel;
@@ -39,7 +39,7 @@ export type ReminderInput = {
   reminderEnabled?: boolean;
 };
 
-export type SnoozeMinutes = 5 | 15 | 60;
+export type SnoozeMinutes = 5 | 10 | 15 | 30 | 60;
 
 function taskTitle(taskId: ApiReminder["taskId"]): string {
   if (typeof taskId === "object" && taskId && "title" in taskId) {

@@ -43,7 +43,7 @@ const RECURRENCE_FREQUENCIES = ['daily', 'weekly', 'monthly', null];
 const SOUND_TYPES = ['default', 'chime', 'bell', 'soft', 'urgent', 'silent'];
 const NOTIFICATION_TYPES = ['push', 'email', 'in_app', 'browser'];
 const REMINDER_STATUSES = ['pending', 'triggered', 'snoozed', 'dismissed'];
-const SNOOZE_MINUTES = [5, 15, 60];
+const SNOOZE_MINUTES = [5, 10, 15, 30, 60];
 
 function validateTaskBody(body, { partial = false } = {}) {
   const errors = [];

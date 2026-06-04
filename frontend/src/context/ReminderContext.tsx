@@ -13,8 +13,7 @@ import { seedDemoRemindersIfEmpty } from "@/services/demoReminders";
 import { placeholderTasks } from "@/services/placeholders";
 import { useFCM } from "@/hooks/useFCM";
 import { useReminderScheduler, type ActiveReminder } from "@/hooks/useReminderScheduler";
-import { ReminderPopup } from "@/components/notifications/ReminderPopup";
-import { FullScreenAlert } from "@/components/notifications/FullScreenAlert";
+import { ReminderModal } from "@/components/notifications/ReminderModal";
 import { BrowserNotificationPrompt } from "@/components/notifications/BrowserNotificationPrompt";
 import { ReminderScheduler } from "@/components/notifications/ReminderScheduler";
 import type { SnoozeMinutes } from "@/services/reminderApi";
@@ -85,14 +84,8 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
       {enabled && (
         <>
           <BrowserNotificationPrompt />
-          {activePopup && typeof activePopup.taskId === "object" && activePopup.taskId?.fullscreenAlertEnabled ? (
-            <FullScreenAlert
-              reminder={activePopup}
-              onSnooze={snoozeActive}
-              onDismiss={dismissActive}
-            />
-          ) : (
-            <ReminderPopup
+          {activePopup && (
+            <ReminderModal
               reminder={activePopup}
               onSnooze={snoozeActive}
               onDismiss={dismissActive}
