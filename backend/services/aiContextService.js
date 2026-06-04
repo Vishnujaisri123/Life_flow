@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const Goal = require('../models/Goal');
 const Habit = require('../models/Habit');
 const { buildTodayFilter, getTodayRange } = require('./taskService');
+const { getISTDateTimeString, formatForAI, IST_TZ } = require('../utils/tzUtils');
 
 function startOfDay(d) {
   const x = new Date(d);
@@ -41,9 +42,11 @@ async function fetchTaskContext(userId) {
   const todayList = todayTasks.map((t) => ({
     id: t._id,
     title: t.title,
-    start: t.startTime ? t.startTime.toISOString() : null,
-    end: t.endTime ? t.endTime.toISOString() : null,
-    due: t.dueDate ? t.dueDate.toISOString() : null,
+    start: t.startTime ? formatForAI(t.startTime) : null,
+    end: t.endTime ? formatForAI(t.endTime) : null,
+    due: t.dueDate ? formatForAI(t.dueDate) : null,
+    startISO: t.startTime ? t.startTime.toISOString() : null,
+    endISO: t.endTime ? t.endTime.toISOString() : null,
     duration: t.duration || null,
   })).slice(0, 20);
 
@@ -69,16 +72,38 @@ async function fetchTaskContext(userId) {
 
 function buildSystemPrompt({ userName, taskContext, mode }) {
   const ctx = taskContext || {};
-  const todayStr = ctx.todayTasks?.map(t => `[${t.id}] ${t.title} (start: ${t.start || 'none'}, end: ${t.end || 'none'})`).join('; ') || 'none';
+  const istNow = getISTDateTimeString();
+
+  const todayStr = ctx.todayTasks?.map(t =>
+    `[${t.id}] ${t.title} (start: ${t.start || 'none'}, end: ${t.end || 'none'}, startISO: ${t.startISO || 'none'}, endISO: ${t.endISO || 'none'})`
+  ).join('; ') || 'none';
   const overdueStr = ctx.overdueTasks?.map(t => `[${t.id}] ${t.title}`).join('; ') || 'none';
   const upcomingStr = ctx.upcomingTasks?.map(t => `[${t.id}] ${t.title}`).join('; ') || 'none';
   const goalStr = ctx.goals?.map(g => `[${g.id}] ${g.title} (${g.progress}%)`).join('; ') || 'none';
 
   const lines = [
     'You are LifeFlow AI, an advanced AI Operating System and productivity coach.',
-    `The user is ${userName || 'there'}. Current time: ${new Date().toISOString()}.`,
+    `The user is ${userName || 'there'}.`,
     '',
-    '## User Task Snapshot (Format: [ID] Title)',
+    '## ⏰ Current Time Context',
+    `- Current IST Time: ${istNow}`,
+    `- User Timezone: ${IST_TZ} (UTC+05:30)`,
+    `- IMPORTANT: The user is in India (IST). ALL task times, reminders, and schedules must use IST.`,
+    `- When the user says "7 PM" they mean 7:00 PM IST = convert to UTC by subtracting 5h30m.`,
+    `- When you output ISO timestamps for action blocks, convert from IST to UTC (subtract 5h30m).`,
+    `- Examples of IST→UTC: 7:00 PM IST = 13:30:00Z | 9:00 AM IST = 03:30:00Z | 6:00 AM IST = 00:30:00Z`,
+    '',
+    '## 🗓 Time Phrase Mapping (always interpret as IST)',
+    '- "tonight at 9" = 21:00 IST',
+    '- "tomorrow morning" = tomorrow 08:00 IST',
+    '- "tomorrow evening" = tomorrow 18:00 IST',
+    '- "after lunch" = today 14:00 IST',
+    '- "after dinner" = today 21:00 IST',
+    '- "noon" = today 12:00 IST',
+    '- "midnight" = tonight 00:00 IST (next calendar day)',
+    '- "next Monday at 5" = next Monday 17:00 IST',
+    '',
+    '## User Task Snapshot (IST times shown)',
     `- Today (${ctx.todayCount ?? 0}): ${todayStr}`,
     `- Overdue (${ctx.overdueCount ?? 0}): ${overdueStr}`,
     `- Upcoming: ${upcomingStr}`,
@@ -88,18 +113,21 @@ function buildSystemPrompt({ userName, taskContext, mode }) {
     '- When user asks to edit, move, rename, reschedule, delete, or complete a task: FIND the task ID from the snapshot above and execute an action block.',
     '- NEVER say "I cannot do that". ALWAYS execute the action using the correct tool.',
     '- Output a fenced ```action JSON block at the END of your reply for each operation.',
+    '- ALL ISO timestamps in action blocks MUST be in UTC (converted from IST).',
     '',
     '## Available Actions:',
     '',
-    '### updateTask — edit title, time, priority, category, description',
+    '### create task (ALL times in UTC, converted from IST)',
     '```action',
-    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"title": "New Title"}}',
+    '{"action": "create_task", "payload": {"title": "DSA Practice", "startTime": "2026-06-05T13:30:00.000Z", "endTime": "2026-06-05T14:30:00.000Z", "dueDate": "2026-06-05T14:30:00.000Z", "reminderEnabled": true, "reminderBefore": 5}}',
     '```',
+    '(Note: 7:00 PM IST = 13:30:00Z, 8:00 PM IST = 14:30:00Z)',
     '',
-    '### reschedule — move task to new time (updates reminder automatically)',
+    '### reschedule — move task to new IST time (convert to UTC in output)',
     '```action',
-    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"startTime": "2026-06-05T20:00:00.000Z", "dueDate": "2026-06-05T21:00:00.000Z", "endTime": "2026-06-05T21:00:00.000Z"}}',
+    '{"action": "update_task", "taskId": "<exact-id>", "payload": {"startTime": "2026-06-05T14:30:00.000Z", "endTime": "2026-06-05T15:30:00.000Z", "dueDate": "2026-06-05T15:30:00.000Z"}}',
     '```',
+    '(Note: 8:00 PM IST = 14:30:00Z, 9:00 PM IST = 15:30:00Z)',
     '',
     '### rename task',
     '```action',
@@ -116,17 +144,11 @@ function buildSystemPrompt({ userName, taskContext, mode }) {
     '{"action": "delete_task", "taskId": "<exact-id>"}',
     '```',
     '',
-    '### create task',
-    '```action',
-    '{"action": "create_task", "payload": {"title": "Task", "startTime": "2026-06-05T09:00:00.000Z", "reminderEnabled": true, "reminderBefore": 5}}',
-    '```',
-    '',
     '### update goal',
     '```action',
     '{"action": "update_goal", "goalId": "<exact-id>", "payload": {"progressPercentage": 75}}',
     '```',
     '',
-    '- All times must be valid ISO 8601 UTC strings.',
     '- When rescheduling, ALWAYS update startTime, endTime, AND dueDate together.',
     '- Reminder time is auto-calculated from reminderBefore (minutes before startTime) on the backend.',
     '- If you cannot find the task ID in the snapshot, say so and ask the user to be more specific.',

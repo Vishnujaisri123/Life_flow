@@ -1,9 +1,11 @@
-import { Calendar, Clock, Bell, Tag, Zap, Info, CheckCircle2, Pencil, Trash2, CalendarClock } from "lucide-react";
+import { Calendar, Clock, Bell, Tag, Zap, Info, CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { priorityBadgeClass } from "@/components/tasks/constants";
+import { getStatusStyle } from "@/components/tasks/taskStatus";
 import type { TaskItem } from "@/services/placeholders";
+import { formatISTDateLong, formatISTTime } from "@/utils/ist";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -17,16 +19,15 @@ type Props = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatISTTime(iso);
 }
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  return formatISTDateLong(iso);
 }
 function reminderTime(task: TaskItem): string | null {
   const base = task.startTime ?? task.dueDate;
   if (!base || task.reminderBefore == null) return null;
-  return new Date(new Date(base).getTime() - task.reminderBefore * 60_000)
-    .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatISTTime(new Date(new Date(base).getTime() - task.reminderBefore * 60_000).toISOString());
 }
 function duration(task: TaskItem): string | null {
   if (task.duration) {
@@ -58,6 +59,7 @@ export function TaskDetailModal({ task, open, onOpenChange, onEdit, onComplete, 
   const rt = reminderTime(task);
   const dur = duration(task);
   const dateStr = task.dueDate ?? task.endTime ?? task.startTime;
+  const status = getStatusStyle(task);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,6 +72,15 @@ export function TaskDetailModal({ task, open, onOpenChange, onEdit, onComplete, 
         </DialogHeader>
 
         <div className="space-y-1 py-1">
+          {/* Color-coded status badge */}
+          <div className="flex items-start gap-3 py-2 border-b border-border/40">
+            <span className="mt-0.5 text-muted-foreground shrink-0"><Info className="h-4 w-4" /></span>
+            <span className="text-xs text-muted-foreground w-24 shrink-0">Status</span>
+            <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full border tracking-wider", status.badgeClass)}>
+              {status.label}
+            </span>
+          </div>
+
           {task.description && (
             <Row icon={<Info className="h-4 w-4" />} label="Description" value={task.description} />
           )}
@@ -93,17 +104,12 @@ export function TaskDetailModal({ task, open, onOpenChange, onEdit, onComplete, 
           {task.category && (
             <Row icon={<Tag className="h-4 w-4" />} label="Category" value={task.category} />
           )}
-          <div className="flex items-start gap-3 py-2 border-b border-border/40">
+          <div className="flex items-start gap-3 py-2">
             <span className="mt-0.5 text-muted-foreground shrink-0"><Info className="h-4 w-4" /></span>
             <span className="text-xs text-muted-foreground w-24 shrink-0">Priority</span>
             <Badge variant="outline" className={cn("text-xs", priorityBadgeClass[task.priority])}>
               {task.priority}
             </Badge>
-          </div>
-          <div className="flex items-start gap-3 py-2">
-            <span className="mt-0.5 text-muted-foreground shrink-0"><CalendarClock className="h-4 w-4" /></span>
-            <span className="text-xs text-muted-foreground w-24 shrink-0">Status</span>
-            <span className="text-sm font-medium capitalize">{task.status.replace("_", " ")}</span>
           </div>
         </div>
 

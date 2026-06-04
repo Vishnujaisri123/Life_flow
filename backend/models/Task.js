@@ -25,8 +25,13 @@ const taskSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['todo', 'in_progress', 'done'],
+      enum: ['todo', 'in_progress', 'done', 'rescheduled'],
       default: 'todo',
+    },
+    timezone: {
+      type: String,
+      trim: true,
+      default: 'Asia/Kolkata',
     },
     startDate: {
       type: Date,

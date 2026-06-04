@@ -51,6 +51,11 @@ const reminderSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    timezone: {
+      type: String,
+      trim: true,
+      default: 'Asia/Kolkata',
+    },
     snoozedCount: {
       type: Number,
       default: 0,

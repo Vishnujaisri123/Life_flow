@@ -4,6 +4,7 @@ const { sendSuccess, sendError } = require('../utils/response');
 const { validateTaskBody } = require('../utils/validation');
 const { buildTodayFilter, buildListFilter, mapTaskUpdates } = require('../services/taskService');
 const googleCalendarService = require('../services/googleCalendarService');
+const { IST_TZ, parseISTDateTime } = require('../utils/tzUtils');
 
 async function getTasks(req, res, next) {
   try {
@@ -27,9 +28,11 @@ async function syncTaskReminder(task) {
         taskId: task._id,
         userId: task.userId,
         status: 'pending',
+        timezone: task.timezone || IST_TZ,
       });
     }
     reminder.reminderTime = rTime;
+    reminder.timezone = task.timezone || IST_TZ;
     reminder.soundType = task.notificationSound || 'chime';
     // Let status reset to pending if time changed and it was triggered
     if (reminder.status !== 'snoozed') {
@@ -68,6 +71,7 @@ async function createTask(req, res, next) {
       description: req.body.description?.trim() || '',
       order: req.body.order ?? nextOrder,
       userId: req.user._id,
+      timezone: req.body.timezone || req.user.timezone || IST_TZ,
     });
 
     req.user.totalTasks = (req.user.totalTasks || 0) + 1;
@@ -109,6 +113,9 @@ async function updateTask(req, res, next) {
     const updates = mapTaskUpdates(req.body);
     if (updates.title) updates.title = updates.title.trim();
     if (updates.description !== undefined) updates.description = updates.description.trim();
+    if (!updates.timezone) {
+      updates.timezone = task.timezone || req.user.timezone || IST_TZ;
+    }
 
     Object.assign(task, updates);
     await task.save();
@@ -233,6 +240,7 @@ async function syncGoogleCalendar(req, res, next) {
           userId: req.user._id,
           reminderEnabled: true,
           reminderBefore: 5,
+          timezone: event.start.timeZone || req.user.timezone || IST_TZ,
         });
 
         req.user.totalTasks = (req.user.totalTasks || 0) + 1;

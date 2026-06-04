@@ -14,11 +14,11 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
-  isToday,
   addMonths,
   subMonths,
 } from "date-fns";
 import type { TaskItem } from "@/services/placeholders";
+import { getISTDateKey } from "@/utils/ist";
 
 export function CalendarPage() {
   const { tasks, isLoading } = useTasks();
@@ -38,9 +38,8 @@ export function CalendarPage() {
     tasks.forEach((task) => {
       const dateStr = task.dueDate || task.endTime || task.startTime;
       if (!dateStr) return;
-      const d = new Date(dateStr);
-      if (Number.isNaN(d.getTime())) return;
-      const key = format(d, "yyyy-MM-dd");
+      const key = getISTDateKey(new Date(dateStr));
+      if (!key) return;
       const list = map.get(key) || [];
       list.push(task);
       map.set(key, list);
@@ -108,17 +107,18 @@ export function CalendarPage() {
           </div>
           <div className="grid grid-cols-7">
             {daysInMonth.map((day, i) => {
-              const dateStr = format(day, "yyyy-MM-dd");
+              const dateStr = getISTDateKey(day);
               const dayTasks = tasksByDate.get(dateStr) || [];
+              const todayKey = getISTDateKey(new Date());
               return (
                 <div
                   key={day.toISOString()}
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, day.toISOString())}
+                  onDrop={(e) => handleDrop(e, dateStr)}
                   className={cn(
                     "min-h-[120px] border-b border-r border-border/60 p-2 transition-colors hover:bg-muted/10",
                     !isSameMonth(day, currentDate) && "bg-muted/5 opacity-50",
-                    isToday(day) && "bg-primary/5",
+                    dateStr === todayKey && "bg-primary/5",
                     i % 7 === 6 && "border-r-0"
                   )}
                 >

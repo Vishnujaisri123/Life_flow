@@ -7,9 +7,10 @@ import type { TaskItem } from "@/services/placeholders";
 import { ROUTES } from "@/routes/paths";
 import { useReminderInbox } from "@/hooks/useReminders";
 import { useReminderContext } from "@/context/ReminderContext";
+import { formatISTTime, formatISTDateTime } from "@/utils/ist";
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatISTTime(iso);
 }
 
 function formatCountdown(ms: number): string {
@@ -23,8 +24,7 @@ function formatCountdown(ms: number): string {
 function computeReminderTime(task: TaskItem): string | null {
   const base = task.startTime ?? task.dueDate;
   if (!base || task.reminderBefore == null) return null;
-  return new Date(new Date(base).getTime() - task.reminderBefore * 60_000)
-    .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatISTTime(new Date(new Date(base).getTime() - task.reminderBefore * 60_000).toISOString());
 }
 
 export function ActiveTaskWidget({ tasks }: { tasks: TaskItem[] }) {
@@ -214,7 +214,7 @@ export function DashboardRemindersWidget() {
   const otherUpcoming = upcoming.slice(1, 4);
 
   const formatTaskTime = (iso: string) => {
-    return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return formatISTDateTime(iso);
   };
 
   const getTitle = (r: any) => {

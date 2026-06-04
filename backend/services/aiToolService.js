@@ -42,6 +42,9 @@ async function processAiAction(action, userId) {
       }
 
       const wasCompleted = Boolean(task.completed);
+      if (newPayload && (action.action === 'reschedule' || newPayload.startTime || newPayload.dueDate)) {
+        newPayload.status = newPayload.status || 'rescheduled';
+      }
       
       if (newPayload) {
         Object.assign(task, newPayload);

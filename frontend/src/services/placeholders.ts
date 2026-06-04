@@ -23,6 +23,7 @@ export type TaskItem = {
   recurrenceEnd?: string | null;
   completed?: boolean;
   createdAt?: string;
+  timezone?: string | null;
 };
 
 export type NotificationItem = {

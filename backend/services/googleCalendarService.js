@@ -114,13 +114,13 @@ async function upsertCalendarEvent(user, task) {
       description: task.description || 'Synced from LifeFlow AI Dashboard.',
       start: {
         dateTime: new Date(start).toISOString(),
-        timeZone: user.timezone || 'UTC',
+        timeZone: task.timezone || 'Asia/Kolkata',
       },
       end: {
         dateTime: new Date(end).toISOString(),
-        timeZone: user.timezone || 'UTC',
+        timeZone: task.timezone || 'Asia/Kolkata',
       },
-      colorId: task.priority === 'urgent' || task.priority === 'high' ? '11' : task.priority === 'medium' ? '5' : '1', // 11 is bold red, 5 is yellow, 1 is blue
+      colorId: task.priority === 'urgent' || task.priority === 'high' ? '11' : task.priority === 'medium' ? '5' : '1',
     };
 
     let url = GOOGLE_CALENDAR_API;

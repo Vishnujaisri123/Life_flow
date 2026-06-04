@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/services/apiClient";
 import type { RecurrenceFrequency, TaskPriority, TaskStatus } from "@/components/tasks/constants";
 import type { TaskItem } from "@/services/placeholders";
+import { formatISTDateInput, formatISTDateTime, getISTDateKey } from "@/utils/ist";
 
 export type ApiTask = {
   id: string;
@@ -41,16 +42,20 @@ function formatDue(task: ApiTask): string | undefined {
   const date = task.dueDate ?? task.endTime ?? task.startTime;
   if (!date) return undefined;
   const d = new Date(date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(d);
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+  const todayKey = getISTDateKey(new Date());
+  const dueKey = getISTDateKey(d);
   if (task.status === "done" || task.completed) return "Done";
-  if (diff < 0) return "Overdue";
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  if (dueKey < todayKey) return "Overdue";
+  if (dueKey === todayKey) return "Today";
+
+  const [todayYear, todayMonth, todayDay] = todayKey.split("-").map(Number);
+  const [dueYear, dueMonth, dueDay] = dueKey.split("-").map(Number);
+  const todayUtc = Date.UTC(todayYear, todayMonth - 1, todayDay);
+  const dueUtc = Date.UTC(dueYear, dueMonth - 1, dueDay);
+  const dayDiff = Math.round((dueUtc - todayUtc) / 86400000);
+
+  if (dayDiff === 1) return "Tomorrow";
+  return formatISTDateTime(d, { weekday: "short", month: "short", day: "numeric" });
 }
 
 export function mapApiTaskToItem(task: ApiTask): TaskItem {
@@ -105,9 +110,9 @@ export function taskFormToPayload(
     category: form.category.trim() || "work",
     priority: form.priority,
     status: form.status,
-    startTime: form.startTime ? new Date(form.startTime).toISOString() : null,
-    dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
-    endTime: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+    startTime: form.startTime || null,
+    dueDate: form.dueDate || null,
+    endTime: form.dueDate || null,
     reminderEnabled: form.reminderEnabled,
     reminderBefore: form.reminderBefore,
     soundEnabled: form.soundEnabled,
@@ -116,16 +121,14 @@ export function taskFormToPayload(
     recurrenceFrequency:
       form.recurrenceFrequency === "none" ? null : form.recurrenceFrequency,
     recurrenceInterval: form.recurrenceInterval,
-    recurrenceEnd: form.recurrenceEnd ? new Date(form.recurrenceEnd).toISOString() : null,
+    recurrenceEnd: form.recurrenceEnd || null,
   };
 }
 
 export function taskItemToForm(task: TaskItem): typeof import("@/components/tasks/types").emptyTaskForm {
   const toInput = (iso?: string | null) => {
     if (!iso) return "";
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toISOString().slice(0, 16);
+    return formatISTDateInput(iso);
   };
   return {
     title: task.title,

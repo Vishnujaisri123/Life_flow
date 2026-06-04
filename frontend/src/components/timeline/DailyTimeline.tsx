@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { format, isToday, addMinutes, differenceInMinutes, isBefore, isAfter, startOfDay, endOfDay } from "date-fns";
+import { format, addMinutes, differenceInMinutes, isBefore, isAfter } from "date-fns";
 import { Clock, Play, CheckCircle2, Moon, Edit, Trash, Move, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TaskItem } from "@/services/placeholders";
+import { getISTTimePixels, isTodayIST, setISTWallClock, formatISTTime } from "@/utils/ist";
 import { useTaskMutations } from "@/hooks/useTasks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ function getTimeFromPixels(pixels: number) {
 }
 
 function getPixelsFromDate(date: Date) {
-  return (date.getHours() * 60 + date.getMinutes()) * PIXELS_PER_MINUTE;
+  return getISTTimePixels(date);
 }
 
 // -----------------------------------------------------
@@ -47,7 +48,7 @@ function TaskBlock({ task, onQuickAction }: { task: TaskItem; onQuickAction: (id
   const end = addMinutes(start, durationMins);
   
   // "Active Now" detection
-  const isActive = isToday(start) && isBefore(start, now) && isAfter(end, now) && !task.completed;
+  const isActive = isTodayIST(start) && isBefore(start, now) && isAfter(end, now) && !task.completed;
 
   const style: React.CSSProperties = {
     top: `${topPx}px`,
@@ -82,11 +83,11 @@ function TaskBlock({ task, onQuickAction }: { task: TaskItem; onQuickAction: (id
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Clock className="w-3 h-3" />
         <span>
-          {format(start, "h:mm a")} - {format(end, "h:mm a")} ({durationMins}m)
+          {formatISTTime(start)} - {formatISTTime(end)} ({durationMins}m)
         </span>
         {task.reminderEnabled && task.reminderBefore != null && task.startTime && (
           <Badge variant="outline" className="h-4 px-1 text-[9px] flex gap-1 items-center bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
-            <Bell className="w-2 h-2" /> {format(new Date(new Date(task.startTime).getTime() - task.reminderBefore * 60_000), "h:mm a")}
+            <Bell className="w-2 h-2" /> {formatISTTime(new Date(new Date(task.startTime).getTime() - task.reminderBefore * 60_000).toISOString())}
           </Badge>
         )}
       </div>
@@ -146,7 +147,7 @@ export function DailyTimeline({ tasks }: { tasks: TaskItem[] }) {
   const todaysTasks = useMemo(() => {
     return tasks.filter(t => {
       const d = t.startTime ? new Date(t.startTime) : (t.dueDate ? new Date(t.dueDate) : null);
-      return d && isToday(d);
+      return d ? isTodayIST(d) : false;
     });
   }, [tasks]);
 
@@ -192,8 +193,7 @@ export function DailyTimeline({ tasks }: { tasks: TaskItem[] }) {
       mins = 0;
     }
     
-    const newStartDate = new Date(start);
-    newStartDate.setHours(Math.min(23, hours), mins, 0, 0);
+    const newStartDate = setISTWallClock(start, Math.min(23, hours), mins);
 
     const dur = task.duration || differenceInMinutes(new Date(task.endTime!), start) || 60;
     const newEndDate = addMinutes(newStartDate, dur);

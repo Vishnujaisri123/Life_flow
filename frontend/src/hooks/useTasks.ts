@@ -21,7 +21,8 @@ import {
 } from "@/services/taskApi";
 import type { TaskFormValues, TaskFiltersState } from "@/components/tasks/types";
 import { defaultTaskFilters } from "@/components/tasks/types";
-import { startOfDay, isBefore, isAfter, isToday, parseISO } from "date-fns";
+import { isBefore, isAfter, parseISO } from "date-fns";
+import { getISTDateKey, isTodayIST } from "@/utils/ist";
 
 export const taskQueryKeys = {
   all: ["tasks"] as const,
@@ -39,6 +40,12 @@ function getTaskDueDate(task: TaskItem): Date | null {
   if (!raw) return null;
   const d = parseISO(raw);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function getISTDateRangeKey(dateString: string) {
+  const date = parseISO(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  return getISTDateKey(date);
 }
 
 export function applyClientFilters(tasks: TaskItem[], filters: TaskFiltersState): TaskItem[] {
@@ -62,17 +69,17 @@ export function applyClientFilters(tasks: TaskItem[], filters: TaskFiltersState)
     result = result.filter((t) => (t.category ?? "work") === filters.category);
   }
   if (filters.dateFrom) {
-    const from = startOfDay(parseISO(filters.dateFrom));
+    const fromKey = getISTDateRangeKey(filters.dateFrom);
     result = result.filter((t) => {
       const d = getTaskDueDate(t);
-      return d && !isBefore(d, from);
+      return d ? getISTDateKey(d) >= fromKey : false;
     });
   }
   if (filters.dateTo) {
-    const to = startOfDay(parseISO(filters.dateTo));
+    const toKey = getISTDateRangeKey(filters.dateTo);
     result = result.filter((t) => {
       const d = getTaskDueDate(t);
-      return d && !isAfter(d, to);
+      return d ? getISTDateKey(d) <= toKey : false;
     });
   }
 
@@ -80,7 +87,7 @@ export function applyClientFilters(tasks: TaskItem[], filters: TaskFiltersState)
 }
 
 export function partitionTasks(tasks: TaskItem[]) {
-  const todayStart = startOfDay(new Date());
+  const todayKey = getISTDateKey(new Date());
   const today: TaskItem[] = [];
   const upcoming: TaskItem[] = [];
   const missed: TaskItem[] = [];
@@ -90,11 +97,12 @@ export function partitionTasks(tasks: TaskItem[]) {
     if (task.status === "done" || task.completed) continue;
     const due = getTaskDueDate(task);
     if (!due) continue;
-    if (isBefore(due, todayStart)) {
+    const dueKey = getISTDateKey(due);
+    if (dueKey < todayKey) {
       missed.push(task);
-    } else if (isToday(due)) {
+    } else if (dueKey === todayKey) {
       today.push(task);
-    } else if (isAfter(due, todayStart)) {
+    } else {
       upcoming.push(task);
     }
   }

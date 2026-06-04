@@ -3,6 +3,7 @@ const ReminderHistory = require('../models/ReminderHistory');
 const Task = require('../models/Task');
 const { sendSuccess, sendError } = require('../utils/response');
 const { validateReminderBody, validateSnoozeBody } = require('../utils/validation');
+const { IST_TZ, parseISTDateTime } = require('../utils/tzUtils');
 
 async function assertTaskOwnership(taskId, userId) {
   return Task.findOne({ _id: taskId, userId });
@@ -101,11 +102,12 @@ async function createReminder(req, res, next) {
     const reminder = await Reminder.create({
       taskId: req.body.taskId,
       userId: req.user._id,
-      reminderTime: new Date(req.body.reminderTime),
+      reminderTime: parseISTDateTime(req.body.reminderTime) || new Date(req.body.reminderTime),
       soundType: req.body.soundType || 'chime',
       notificationType: req.body.notificationType || 'in_app',
       status: 'pending',
       read: false,
+      timezone: req.body.timezone || req.user.timezone || IST_TZ,
     });
 
     if (req.body.reminderEnabled !== false) {
@@ -135,7 +137,7 @@ async function updateReminder(req, res, next) {
       return sendError(res, { message: 'Reminder not found', statusCode: 404 });
     }
 
-    if (req.body.reminderTime) reminder.reminderTime = new Date(req.body.reminderTime);
+    if (req.body.reminderTime) reminder.reminderTime = parseISTDateTime(req.body.reminderTime) || new Date(req.body.reminderTime);
     if (req.body.soundType) reminder.soundType = req.body.soundType;
     if (req.body.notificationType) reminder.notificationType = req.body.notificationType;
     if (req.body.status) reminder.status = req.body.status;

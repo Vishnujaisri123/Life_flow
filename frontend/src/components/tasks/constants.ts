@@ -7,7 +7,7 @@ export const PREDEFINED_CATEGORIES = [
 ] as const;
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "done" | "rescheduled";
 export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | null;
 
 export const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [

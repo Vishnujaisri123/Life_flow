@@ -37,7 +37,7 @@ function validateProfileBody(body, { partial = false } = {}) {
 }
 
 const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
-const TASK_STATUSES = ['todo', 'in_progress', 'done'];
+const TASK_STATUSES = ['todo', 'in_progress', 'done', 'rescheduled'];
 const TASK_CATEGORIES = ['work', 'personal', 'health', 'learning', 'other'];
 const RECURRENCE_FREQUENCIES = ['daily', 'weekly', 'monthly', null];
 const SOUND_TYPES = ['default', 'chime', 'bell', 'soft', 'urgent', 'silent'];

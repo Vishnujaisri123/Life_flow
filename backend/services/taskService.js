@@ -1,12 +1,10 @@
+const { getTodayRangeIST, parseISTDateTime, getISTDayRange } = require('../utils/tzUtils');
+
 /**
- * Returns start/end of local day in UTC for MongoDB date queries.
+ * Returns start/end of IST calendar day in UTC for MongoDB queries.
  */
 function getTodayRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
+  return getTodayRangeIST();
 }
 
 function buildTodayFilter(userId) {
@@ -40,11 +38,13 @@ function buildListFilter(userId, query = {}) {
   const dateField = query.dateField === 'startTime' ? 'startTime' : 'dueDate';
   if (query.dateFrom || query.dateTo) {
     const range = {};
-    if (query.dateFrom) range.$gte = new Date(query.dateFrom);
+    if (query.dateFrom) {
+      const dayRange = getISTDayRange(query.dateFrom);
+      if (dayRange) range.$gte = dayRange.start;
+    }
     if (query.dateTo) {
-      const to = new Date(query.dateTo);
-      to.setHours(23, 59, 59, 999);
-      range.$lte = to;
+      const dayRange = getISTDayRange(query.dateTo);
+      if (dayRange) range.$lte = dayRange.end;
     }
     filter.$or = [
       { [dateField]: range },
@@ -73,6 +73,7 @@ function mapTaskUpdates(body) {
     'priority',
     'status',
     'order',
+    'timezone',
     'startDate',
     'startTime',
     'endTime',
@@ -101,7 +102,7 @@ function mapTaskUpdates(body) {
   }
   const dateKeys = ['startDate', 'startTime', 'endTime', 'dueDate', 'reminderTime', 'recurrenceEnd'];
   for (const key of dateKeys) {
-    if (updates[key]) updates[key] = new Date(updates[key]);
+    if (updates[key]) updates[key] = parseISTDateTime(updates[key]);
     if (updates[key] === null || updates[key] === '') updates[key] = null;
   }
   if (updates.recurrenceFrequency === '' || updates.recurrenceFrequency === 'none') {
