@@ -3,12 +3,34 @@ const Goal = require('../models/Goal');
 const User = require('../models/User');
 const { syncTaskReminder } = require('../controllers/taskController');
 const googleCalendarService = require('./googleCalendarService');
+const { parseISTDateTime, IST_TZ } = require('../utils/tzUtils');
 
 /**
  * Handles AI Actions dynamically.
  * Actions marked SAFE are executed immediately.
  * Actions marked DANGEROUS return a "pending_confirmation" flag to the frontend.
  */
+function normalizeAiDates(payload = {}) {
+  const normalized = { ...payload };
+  const dateKeys = ['startTime', 'endTime', 'dueDate', 'reminderTime', 'recurrenceEnd'];
+  for (const key of dateKeys) {
+    if (normalized[key] !== undefined && normalized[key] !== null && normalized[key] !== '') {
+      const parsed = parseISTDateTime(normalized[key]);
+      if (parsed) {
+        normalized[key] = parsed;
+      }
+    }
+  }
+
+  if (normalized.dueDate && !normalized.endTime) {
+    normalized.endTime = normalized.dueDate;
+  }
+  if (normalized.endTime && !normalized.dueDate) {
+    normalized.dueDate = normalized.endTime;
+  }
+  return normalized;
+}
+
 async function processAiAction(action, userId) {
   try {
     const user = await User.findById(userId);
@@ -18,7 +40,12 @@ async function processAiAction(action, userId) {
 
     // SAFE ACTIONS
     if (action.action === 'create_task') {
-      const task = await Task.create({ ...action.payload, userId });
+      const payload = normalizeAiDates(action.payload);
+      const task = await Task.create({
+        ...payload,
+        userId,
+        timezone: payload.timezone || user.timezone || IST_TZ,
+      });
       user.totalTasks = (user.totalTasks || 0) + 1;
       if (task.completed) {
         user.completedTasks = (user.completedTasks || 0) + 1;
@@ -35,7 +62,8 @@ async function processAiAction(action, userId) {
     }
     
     if (action.action === 'update_task' || action.action === 'reschedule') {
-      const newPayload = action.newTime ? { startTime: action.newTime, dueDate: action.newTime } : action.payload;
+      const rawPayload = action.newTime ? { startTime: action.newTime, dueDate: action.newTime } : action.payload;
+      const newPayload = normalizeAiDates(rawPayload);
       const task = await Task.findOne({ _id: action.taskId, userId });
       if (!task) {
         return { success: false, message: 'Task not found' };
@@ -47,6 +75,9 @@ async function processAiAction(action, userId) {
       }
       
       if (newPayload) {
+        if (!newPayload.timezone) {
+          newPayload.timezone = task.timezone || user.timezone || IST_TZ;
+        }
         Object.assign(task, newPayload);
         await task.save();
       }
